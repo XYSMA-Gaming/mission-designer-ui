@@ -503,7 +503,6 @@ export default function App() {
 function EditDialog({ box, onSave, onClose }) {
   const [label, setLabel] = useState(box.label);
   const [image, setImage] = useState(box.image);
-  const [imageData, setImageData] = useState(null);
   const [question, setQuestion] = useState(box.question);
   const [options, setOptions] = useState(box.options);
   const fileInputRef = useRef(null);
@@ -511,15 +510,9 @@ function EditDialog({ box, onSave, onClose }) {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Store the absolute path
-      setImage(file.path || file.webkitRelativePath || file.name);
-      
-      // For display preview, read as data URL
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImageData(event.target.result);
-      };
-      reader.readAsDataURL(file);
+      // Store the file:// URL - works for both Electron/desktop and local file access
+      const fileUrl = file.path ? `file:///${file.path.replace(/\\/g, '/')}` : URL.createObjectURL(file);
+      setImage(fileUrl);
     }
   };
 
@@ -572,15 +565,14 @@ function EditDialog({ box, onSave, onClose }) {
           <div className="form-group">
             <label>Screen Image</label>
             <div className="image-upload">
-              {(imageData || image) && (
+              {image && (
                 <div className="image-preview">
-                  <img src={imageData || image} alt="Preview" />
+                  <img src={image} alt="Preview" />
                   <button
                     type="button"
                     className="remove-image"
                     onClick={() => {
                       setImage(null);
-                      setImageData(null);
                     }}
                   >
                     Remove
@@ -592,7 +584,7 @@ function EditDialog({ box, onSave, onClose }) {
                 className="btn-upload"
                 onClick={() => fileInputRef.current.click()}
               >
-                {image || imageData ? 'Change Image' : 'Upload Image'}
+                {image ? 'Change Image' : 'Upload Image'}
               </button>
               <input
                 ref={fileInputRef}
