@@ -1,0 +1,9 @@
+Options -Indexes
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+
+<FilesMatch "\.(db|sqlite)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
