@@ -70,6 +70,8 @@ export default function App() {
       height: 500,
       label: `Screen ${boxes.length + 1}`,
       image: null,
+      audio: null,
+      extendedAudio: null,
       question: '',
       options: [
         { id: Date.now() + 1, text: 'Option 1' },
@@ -385,7 +387,15 @@ export default function App() {
             )}
             
             <div className="box-content">
-              <div className="screen-label">{box.label}</div>
+              <div className="screen-label-row">
+                <div className="screen-label">{box.label}</div>
+                {(box.audio || box.extendedAudio) && (
+                  <div className="audio-indicators">
+                    {box.audio && <span className="audio-badge" title="Normal audio">♪</span>}
+                    {box.extendedAudio && <span className="audio-badge audio-badge-extended" title="Extended audio">♫</span>}
+                  </div>
+                )}
+              </div>
               {box.question && (
                 <div className="screen-question">{box.question}</div>
               )}
@@ -503,9 +513,15 @@ export default function App() {
 function EditDialog({ box, onSave, onClose }) {
   const [label, setLabel] = useState(box.label);
   const [image, setImage] = useState(box.image);
+  const [audio, setAudio] = useState(box.audio || null);
+  const [extendedAudio, setExtendedAudio] = useState(box.extendedAudio || null);
+  const [audioName, setAudioName] = useState(box.audioName || null);
+  const [extendedAudioName, setExtendedAudioName] = useState(box.extendedAudioName || null);
   const [question, setQuestion] = useState(box.question);
   const [options, setOptions] = useState(box.options);
   const fileInputRef = useRef(null);
+  const audioInputRef = useRef(null);
+  const extendedAudioInputRef = useRef(null);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -513,6 +529,24 @@ function EditDialog({ box, onSave, onClose }) {
       // Store the file:// URL - works for both Electron/desktop and local file access
       const fileUrl = file.path ? `file:///${file.path.replace(/\\/g, '/')}` : URL.createObjectURL(file);
       setImage(fileUrl);
+    }
+  };
+
+  const handleAudioUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const fileUrl = file.path ? `file:///${file.path.replace(/\\/g, '/')}` : URL.createObjectURL(file);
+      setAudio(fileUrl);
+      setAudioName(file.name);
+    }
+  };
+
+  const handleExtendedAudioUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const fileUrl = file.path ? `file:///${file.path.replace(/\\/g, '/')}` : URL.createObjectURL(file);
+      setExtendedAudio(fileUrl);
+      setExtendedAudioName(file.name);
     }
   };
 
@@ -536,6 +570,10 @@ function EditDialog({ box, onSave, onClose }) {
     onSave({
       label,
       image,
+      audio,
+      audioName,
+      extendedAudio,
+      extendedAudioName,
       question,
       options: options.filter(o => o.text.trim()),
     });
@@ -591,6 +629,74 @@ function EditDialog({ box, onSave, onClose }) {
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+
+          {/* Normal Audio Upload */}
+          <div className="form-group">
+            <label>Normal Audio</label>
+            <div className="audio-upload">
+              {audio && (
+                <div className="audio-preview">
+                  <span className="audio-icon">♪</span>
+                  <span className="audio-filename">{audioName || 'Audio file'}</span>
+                  <button
+                    type="button"
+                    className="remove-audio"
+                    onClick={() => { setAudio(null); setAudioName(null); }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn-upload"
+                onClick={() => audioInputRef.current.click()}
+              >
+                {audio ? 'Change Audio' : 'Upload Audio'}
+              </button>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+
+          {/* Extended Audio Upload */}
+          <div className="form-group">
+            <label>Extended Audio</label>
+            <div className="audio-upload">
+              {extendedAudio && (
+                <div className="audio-preview">
+                  <span className="audio-icon">♪</span>
+                  <span className="audio-filename">{extendedAudioName || 'Audio file'}</span>
+                  <button
+                    type="button"
+                    className="remove-audio"
+                    onClick={() => { setExtendedAudio(null); setExtendedAudioName(null); }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn-upload"
+                onClick={() => extendedAudioInputRef.current.click()}
+              >
+                {extendedAudio ? 'Change Extended Audio' : 'Upload Extended Audio'}
+              </button>
+              <input
+                ref={extendedAudioInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleExtendedAudioUpload}
                 style={{ display: 'none' }}
               />
             </div>
