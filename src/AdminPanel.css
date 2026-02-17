@@ -1,0 +1,302 @@
+.admin-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+/* Header */
+.ap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.ap-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ap-logo {
+  width: 38px;
+  height: 38px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ap-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.ap-brand-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.ap-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ap-user {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.ap-logout-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ap-logout-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Main content */
+.ap-main {
+  flex: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.ap-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.ap-section-header h2 {
+  margin: 0 0 2px;
+  font-size: 22px;
+  color: #111827;
+}
+
+.ap-section-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.ap-new-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.ap-new-btn:hover {
+  background: #2563eb;
+}
+
+/* States */
+.ap-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 0;
+  color: #6b7280;
+  gap: 12px;
+}
+
+.ap-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ap-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 20px;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ap-error p {
+  margin: 0;
+}
+
+.ap-retry-btn {
+  background: white;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ap-retry-btn:hover {
+  background: #fef2f2;
+}
+
+.ap-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 20px;
+  text-align: center;
+  gap: 8px;
+}
+
+.ap-empty-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.ap-empty h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.ap-empty p {
+  margin: 0 0 16px;
+  color: #6b7280;
+}
+
+/* Mission cards grid */
+.ap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.ap-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.ap-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.ap-card-body {
+  padding: 20px;
+  flex: 1;
+}
+
+.ap-card-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #111827;
+  font-weight: 700;
+}
+
+.ap-card-desc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ap-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.ap-card-footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.ap-edit-btn {
+  flex: 1;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ap-edit-btn:hover {
+  background: #dbeafe;
+}
+
+.ap-delete-btn {
+  flex: 1;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ap-delete-btn:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.ap-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
