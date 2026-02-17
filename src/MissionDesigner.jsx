@@ -72,6 +72,7 @@ export default function MissionDesigner({ missionId, onBack }) {
       width: 400,
       height: 500,
       label: `Screen ${boxes.length + 1}`,
+      checkpoint: false,
       image: null,
       audio: null,
       audioName: null,
@@ -400,20 +401,21 @@ export default function MissionDesigner({ missionId, onBack }) {
             <div className="box-content">
               <div className="screen-label-row">
                 <div className="screen-label">{box.label}</div>
-                {(box.audio || box.extendedAudio) && (
-                  <div className="audio-indicators">
-                    {box.audio && (
-                      <span className="audio-badge" title="Normal audio">
-                        ♪
-                      </span>
-                    )}
-                    {box.extendedAudio && (
-                      <span className="audio-badge audio-badge-extended" title="Extended audio">
-                        ♫
-                      </span>
-                    )}
-                  </div>
-                )}
+                <div className="box-badges">
+                  {box.checkpoint && (
+                    <span className="checkpoint-badge" title="Checkpoint">✓</span>
+                  )}
+                  {(box.audio || box.extendedAudio) && (
+                    <div className="audio-indicators">
+                      {box.audio && (
+                        <span className="audio-badge" title="Normal audio">♪</span>
+                      )}
+                      {box.extendedAudio && (
+                        <span className="audio-badge audio-badge-extended" title="Extended audio">♫</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               {box.question && <div className="screen-question">{box.question}</div>}
 
@@ -533,6 +535,7 @@ export default function MissionDesigner({ missionId, onBack }) {
 // ---------------------------------------------------------------------------
 function EditDialog({ box, onSave, onClose }) {
   const [label, setLabel] = useState(box.label);
+  const [checkpoint, setCheckpoint] = useState(box.checkpoint || false);
   const [image, setImage] = useState(box.image);
   const [audio, setAudio] = useState(box.audio || null);
   const [audioName, setAudioName] = useState(box.audioName || null);
@@ -613,7 +616,7 @@ function EditDialog({ box, onSave, onClose }) {
   };
 
   const handleSave = () => {
-    onSave({ label, image, audio, audioName, extendedAudio, extendedAudioName, question, options: options.filter((o) => o.text.trim()) });
+    onSave({ label, checkpoint, image, audio, audioName, extendedAudio, extendedAudioName, question, options: options.filter((o) => o.text.trim()) });
   };
 
   return (
@@ -636,6 +639,18 @@ function EditDialog({ box, onSave, onClose }) {
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g., Welcome Screen"
             />
+          </div>
+
+          {/* Checkpoint */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={checkpoint}
+                onChange={(e) => setCheckpoint(e.target.checked)}
+              />
+              Checkpoint
+            </label>
           </div>
 
           {/* Image Upload */}
