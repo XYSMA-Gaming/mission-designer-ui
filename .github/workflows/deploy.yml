@@ -1,25 +1,14 @@
-name: Build and Deploy to GitHub Pages
+name: Build & Deploy via FTP
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,22 +22,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build frontend
         run: npm run build
+        # The compiled frontend lands in ./dist
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      # -------------------------------------------------------------------------
+      # Deploy PHP backend
+      # Remote path is read from GitHub Variable: FTP_BACKEND_DIR
+      # e.g. /public_html/api/
+      # -------------------------------------------------------------------------
+      - name: Deploy backend via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          path: './dist'
+          server:          ${{ secrets.FTP_HOST }}
+          username:        ${{ secrets.FTP_USERNAME }}
+          password:        ${{ secrets.FTP_PASSWORD }}
+          local-dir:       ./backend/
+          server-dir:      ${{ vars.FTP_BACKEND_DIR }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/missions.db
 
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # -------------------------------------------------------------------------
+      # Deploy built frontend
+      # Remote path is read from GitHub Variable: FTP_FRONTEND_DIR
+      # e.g. /public_html/
+      # -------------------------------------------------------------------------
+      - name: Deploy frontend via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server:     ${{ secrets.FTP_HOST }}
+          username:   ${{ secrets.FTP_USERNAME }}
+          password:   ${{ secrets.FTP_PASSWORD }}
+          local-dir:  ./dist/
+          server-dir: ${{ vars.FTP_FRONTEND_DIR }}
