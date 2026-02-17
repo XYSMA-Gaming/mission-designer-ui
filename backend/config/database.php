@@ -16,6 +16,8 @@ function getDB() {
         PDO::ATTR_EMULATE_PREPARES   => false,
     ]);
 
+    // MySQL PDO does not support multiple statements in one exec() call,
+    // so each CREATE TABLE runs separately.
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS users (
             id         INT          NOT NULL AUTO_INCREMENT,
@@ -26,8 +28,10 @@ function getDB() {
             PRIMARY KEY (id),
             UNIQUE KEY uq_username (username),
             UNIQUE KEY uq_email    (email)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 
+    $pdo->exec("
         CREATE TABLE IF NOT EXISTS missions (
             id          INT          NOT NULL AUTO_INCREMENT,
             title       VARCHAR(255) NOT NULL,
@@ -38,8 +42,10 @@ function getDB() {
             created_by  INT,
             PRIMARY KEY (id),
             FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 
+    $pdo->exec("
         CREATE TABLE IF NOT EXISTS tokens (
             id         INT         NOT NULL AUTO_INCREMENT,
             user_id    INT         NOT NULL,
@@ -48,7 +54,7 @@ function getDB() {
             PRIMARY KEY (id),
             UNIQUE KEY uq_token (token),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
     return $pdo;
