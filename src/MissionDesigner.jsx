@@ -25,12 +25,21 @@ export default function MissionDesigner({ missionId, onBack }) {
   const currentMissionIdRef = useRef(missionId || null);
   const panRef = useRef(null);
   const panMovedRef = useRef(false);
-  // Keep latest scale/offset in refs so the native wheel handler can read them
-  // without being re-registered on every change.
+  // Keep latest scale/offset in refs so native event handlers always read
+  // fresh values without needing to be re-registered on every state change.
   const scaleRef = useRef(scale);
   const offsetRef = useRef(offset);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
-  useEffect(() => { offsetRef.current = offset; }, [offset]);
+
+  // Helpers that update both state (for rendering) and refs (for event handlers)
+  // synchronously so rapid events never read stale values.
+  const applyScale = (newScale) => {
+    scaleRef.current = newScale;
+    setScale(newScale);
+  };
+  const applyOffset = (newOffset) => {
+    offsetRef.current = newOffset;
+    setOffset(newOffset);
+  };
 
   // Wheel zoom — registered as non-passive so we can preventDefault
   useEffect(() => {
@@ -46,11 +55,15 @@ export default function MissionDesigner({ missionId, onBack }) {
       const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       const newScale = Math.min(Math.max(currentScale * factor, 0.1), 5);
       // Keep the point under the cursor fixed in world space
-      setOffset({
+      const newOffset = {
         x: mouseX - (mouseX - currentOffset.x) * (newScale / currentScale),
         y: mouseY - (mouseY - currentOffset.y) * (newScale / currentScale),
-      });
+      };
+      // Update refs first so any immediately-following events get fresh values
+      scaleRef.current = newScale;
+      offsetRef.current = newOffset;
       setScale(newScale);
+      setOffset(newOffset);
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
@@ -137,11 +150,12 @@ export default function MissionDesigner({ missionId, onBack }) {
   const handleCanvasPanStart = (e) => {
     if (e.button !== 0) return;
     panMovedRef.current = false;
+    // Read from ref (always current) so rapid pan restarts don't use stale state
     panRef.current = {
       startX: e.clientX,
       startY: e.clientY,
-      startOffsetX: offset.x,
-      startOffsetY: offset.y,
+      startOffsetX: offsetRef.current.x,
+      startOffsetY: offsetRef.current.y,
     };
   };
 
@@ -153,10 +167,14 @@ export default function MissionDesigner({ missionId, onBack }) {
 
   const handleCanvasMouseMove = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
+    // Always read from refs so values are never stale during rapid events
+    const currentScale = scaleRef.current;
+    const currentOffset = offsetRef.current;
+
     // Mouse position in world (canvas) coordinates
     setMousePos({
-      x: (e.clientX - rect.left - offset.x) / scale,
-      y: (e.clientY - rect.top - offset.y) / scale,
+      x: (e.clientX - rect.left - currentOffset.x) / currentScale,
+      y: (e.clientY - rect.top - currentOffset.y) / currentScale,
     });
 
     // Pan takes priority over drag/resize
@@ -164,33 +182,38 @@ export default function MissionDesigner({ missionId, onBack }) {
       const dx = e.clientX - panRef.current.startX;
       const dy = e.clientY - panRef.current.startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) panMovedRef.current = true;
-      setOffset({ x: panRef.current.startOffsetX + dx, y: panRef.current.startOffsetY + dy });
+      const newOffset = { x: panRef.current.startOffsetX + dx, y: panRef.current.startOffsetY + dy };
+      // Update ref immediately so subsequent events in the same frame get the fresh offset
+      offsetRef.current = newOffset;
+      setOffset(newOffset);
       return;
     }
 
     if (dragRef.current) {
       // Divide screen-pixel delta by scale to get world-pixel delta
-      const deltaX = (e.clientX - dragRef.current.startX) / scale;
-      const deltaY = (e.clientY - dragRef.current.startY) / scale;
-      setBoxes(
-        boxes.map((b) =>
-          b.id === dragRef.current.boxId
-            ? { ...b, x: dragRef.current.boxX + deltaX, y: dragRef.current.boxY + deltaY }
+      const deltaX = (e.clientX - dragRef.current.startX) / currentScale;
+      const deltaY = (e.clientY - dragRef.current.startY) / currentScale;
+      const { boxId, boxX, boxY } = dragRef.current;
+      setBoxes((prev) =>
+        prev.map((b) =>
+          b.id === boxId
+            ? { ...b, x: boxX + deltaX, y: boxY + deltaY }
             : b
         )
       );
     }
 
     if (resizeRef.current) {
-      const deltaX = (e.clientX - resizeRef.current.startX) / scale;
-      const deltaY = (e.clientY - resizeRef.current.startY) / scale;
-      setBoxes(
-        boxes.map((b) =>
-          b.id === resizeRef.current.boxId
+      const deltaX = (e.clientX - resizeRef.current.startX) / currentScale;
+      const deltaY = (e.clientY - resizeRef.current.startY) / currentScale;
+      const { boxId, width, height } = resizeRef.current;
+      setBoxes((prev) =>
+        prev.map((b) =>
+          b.id === boxId
             ? {
                 ...b,
-                width: Math.max(200, resizeRef.current.width + deltaX),
-                height: Math.max(200, resizeRef.current.height + deltaY),
+                width: Math.max(200, width + deltaX),
+                height: Math.max(200, height + deltaY),
               }
             : b
         )
@@ -260,10 +283,12 @@ export default function MissionDesigner({ missionId, onBack }) {
     if (!elementRect) return null;
 
     // getBoundingClientRect returns screen coords (post-transform).
-    // Convert back to world coords so SVG paths align correctly.
+    // Use refs so this is always accurate even mid-animation.
+    const s = scaleRef.current;
+    const o = offsetRef.current;
     return {
-      x: (elementRect.right - canvasRect.left - offset.x) / scale,
-      y: (elementRect.top - canvasRect.top + elementRect.height / 2 - offset.y) / scale,
+      x: (elementRect.right - canvasRect.left - o.x) / s,
+      y: (elementRect.top - canvasRect.top + elementRect.height / 2 - o.y) / s,
     };
   };
 
@@ -338,15 +363,15 @@ export default function MissionDesigner({ missionId, onBack }) {
         <div className="toolbar-divider" />
 
         <div className="zoom-controls">
-          <button className="zoom-btn" onClick={() => setScale((s) => Math.max(0.1, +(s / 1.25).toFixed(2)))}>−</button>
+          <button className="zoom-btn" onClick={() => applyScale(Math.max(0.1, +(scaleRef.current / 1.25).toFixed(2)))}>−</button>
           <button
             className="zoom-pct"
-            onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); }}
+            onClick={() => { applyScale(1); applyOffset({ x: 0, y: 0 }); }}
             title="Reset zoom and position"
           >
             {Math.round(scale * 100)}%
           </button>
-          <button className="zoom-btn" onClick={() => setScale((s) => Math.min(5, +(s * 1.25).toFixed(2)))}>+</button>
+          <button className="zoom-btn" onClick={() => applyScale(Math.min(5, +(scaleRef.current * 1.25).toFixed(2)))}>+</button>
         </div>
 
         <p className="toolbar-text">Scroll to zoom • Drag canvas to pan • Click dots to connect</p>
