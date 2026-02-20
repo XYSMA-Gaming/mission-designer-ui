@@ -188,8 +188,8 @@ export default function MissionDesigner({ missionId, onBack }) {
 
   const handleCanvasPanStart = (e) => {
     if (e.button !== 0) return;
+    if (!spaceDownRef.current) return; // only pan when Space is held
     panMovedRef.current = false;
-    // Read from ref (always current) so rapid pan restarts don't use stale state
     panRef.current = {
       startX: e.clientX,
       startY: e.clientY,
