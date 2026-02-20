@@ -3,6 +3,9 @@ name: Build & Deploy via FTP
 on:
   push:
 
+  # Allow manual triggering from the Actions tab (for any branch)
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
