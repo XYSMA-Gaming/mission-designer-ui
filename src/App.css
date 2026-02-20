@@ -246,13 +246,11 @@ body {
 .canvas {
   flex: 1;
   position: relative;
-  background: #f8f9fa;
   overflow: hidden;
-  cursor: grab;
-}
-
-.canvas:active {
-  cursor: grabbing;
+  cursor: default;
+  background-color: #f8f9fa;
+  background-image: radial-gradient(circle, #c8d0db 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* Space-bar pan mode: override every cursor inside the canvas */
@@ -274,9 +272,6 @@ body {
   width: 20000px;
   height: 20000px;
   transform-origin: 0 0;
-  background-image: radial-gradient(circle, #c8d0db 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-color: #f8f9fa;
 }
 
 .connections-svg {
