@@ -16,11 +16,86 @@ export default function MissionDesigner({ missionId, onBack }) {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [spaceDown, setSpaceDown] = useState(false);
 
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const resizeRef = useRef(null);
   const currentMissionIdRef = useRef(missionId || null);
+  const panRef = useRef(null);
+  const panMovedRef = useRef(false);
+  const spaceDownRef = useRef(false);
+  // Keep latest scale/offset in refs so native event handlers always read
+  // fresh values without needing to be re-registered on every state change.
+  const scaleRef = useRef(scale);
+  const offsetRef = useRef(offset);
+
+  // Helpers that update both state (for rendering) and refs (for event handlers)
+  // synchronously so rapid events never read stale values.
+  const applyScale = (newScale) => {
+    scaleRef.current = newScale;
+    setScale(newScale);
+  };
+  const applyOffset = (newOffset) => {
+    offsetRef.current = newOffset;
+    setOffset(newOffset);
+  };
+
+  // Wheel zoom — registered as non-passive so we can preventDefault
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const currentScale = scaleRef.current;
+      const currentOffset = offsetRef.current;
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const newScale = Math.min(Math.max(currentScale * factor, 0.1), 5);
+      // Keep the point under the cursor fixed in world space
+      const newOffset = {
+        x: mouseX - (mouseX - currentOffset.x) * (newScale / currentScale),
+        y: mouseY - (mouseY - currentOffset.y) * (newScale / currentScale),
+      };
+      // Update refs first so any immediately-following events get fresh values
+      scaleRef.current = newScale;
+      offsetRef.current = newOffset;
+      setScale(newScale);
+      setOffset(newOffset);
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Space key — activates pan mode (pan anywhere by holding Space + drag)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.code !== 'Space') return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return; // don't hijack typing
+      e.preventDefault();
+      if (!spaceDownRef.current) {
+        spaceDownRef.current = true;
+        setSpaceDown(true);
+      }
+    };
+    const onKeyUp = (e) => {
+      if (e.code !== 'Space') return;
+      spaceDownRef.current = false;
+      setSpaceDown(false);
+      panRef.current = null;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   // Load mission from server
   useEffect(() => {
@@ -90,6 +165,17 @@ export default function MissionDesigner({ missionId, onBack }) {
   const handleMouseDown = (e, boxId) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    // Space held → pan mode even when clicking on a box
+    if (spaceDownRef.current) {
+      panMovedRef.current = false;
+      panRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startOffsetX: offsetRef.current.x,
+        startOffsetY: offsetRef.current.y,
+      };
+      return;
+    }
     setSelectedBox(boxId);
     dragRef.current = {
       boxId,
@@ -100,32 +186,73 @@ export default function MissionDesigner({ missionId, onBack }) {
     };
   };
 
+  const handleCanvasPanStart = (e) => {
+    if (e.button !== 0) return;
+    panMovedRef.current = false;
+    // Read from ref (always current) so rapid pan restarts don't use stale state
+    panRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startOffsetX: offsetRef.current.x,
+      startOffsetY: offsetRef.current.y,
+    };
+  };
+
+  const handleCanvasClick = () => {
+    if (panMovedRef.current) return; // was a pan drag, not a tap
+    setSelectedBox(null);
+    setSelectedConnection(null);
+  };
+
   const handleCanvasMouseMove = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    // Always read from refs so values are never stale during rapid events
+    const currentScale = scaleRef.current;
+    const currentOffset = offsetRef.current;
+
+    // Mouse position in world (canvas) coordinates
+    setMousePos({
+      x: (e.clientX - rect.left - currentOffset.x) / currentScale,
+      y: (e.clientY - rect.top - currentOffset.y) / currentScale,
+    });
+
+    // Pan takes priority over drag/resize
+    if (panRef.current && !dragRef.current && !resizeRef.current) {
+      const dx = e.clientX - panRef.current.startX;
+      const dy = e.clientY - panRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) panMovedRef.current = true;
+      const newOffset = { x: panRef.current.startOffsetX + dx, y: panRef.current.startOffsetY + dy };
+      // Update ref immediately so subsequent events in the same frame get the fresh offset
+      offsetRef.current = newOffset;
+      setOffset(newOffset);
+      return;
+    }
 
     if (dragRef.current) {
-      const deltaX = e.clientX - dragRef.current.startX;
-      const deltaY = e.clientY - dragRef.current.startY;
-      setBoxes(
-        boxes.map((b) =>
-          b.id === dragRef.current.boxId
-            ? { ...b, x: dragRef.current.boxX + deltaX, y: dragRef.current.boxY + deltaY }
+      // Divide screen-pixel delta by scale to get world-pixel delta
+      const deltaX = (e.clientX - dragRef.current.startX) / currentScale;
+      const deltaY = (e.clientY - dragRef.current.startY) / currentScale;
+      const { boxId, boxX, boxY } = dragRef.current;
+      setBoxes((prev) =>
+        prev.map((b) =>
+          b.id === boxId
+            ? { ...b, x: boxX + deltaX, y: boxY + deltaY }
             : b
         )
       );
     }
 
     if (resizeRef.current) {
-      const deltaX = e.clientX - resizeRef.current.startX;
-      const deltaY = e.clientY - resizeRef.current.startY;
-      setBoxes(
-        boxes.map((b) =>
-          b.id === resizeRef.current.boxId
+      const deltaX = (e.clientX - resizeRef.current.startX) / currentScale;
+      const deltaY = (e.clientY - resizeRef.current.startY) / currentScale;
+      const { boxId, width, height } = resizeRef.current;
+      setBoxes((prev) =>
+        prev.map((b) =>
+          b.id === boxId
             ? {
                 ...b,
-                width: Math.max(200, resizeRef.current.width + deltaX),
-                height: Math.max(200, resizeRef.current.height + deltaY),
+                width: Math.max(200, width + deltaX),
+                height: Math.max(200, height + deltaY),
               }
             : b
         )
@@ -136,6 +263,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const handleCanvasMouseUp = () => {
     dragRef.current = null;
     resizeRef.current = null;
+    panRef.current = null;
   };
 
   const completeConnection = (toBoxId) => {
@@ -193,25 +321,27 @@ export default function MissionDesigner({ missionId, onBack }) {
     const elementRect = element.querySelector('[data-connection-point]')?.getBoundingClientRect();
     if (!elementRect) return null;
 
+    // getBoundingClientRect returns screen coords (post-transform).
+    // Use refs so this is always accurate even mid-animation.
+    const s = scaleRef.current;
+    const o = offsetRef.current;
     return {
-      x: elementRect.right - canvasRect.left,
-      y: elementRect.top - canvasRect.top + elementRect.height / 2,
+      x: (elementRect.right - canvasRect.left - o.x) / s,
+      y: (elementRect.top - canvasRect.top + elementRect.height / 2 - o.y) / s,
     };
   };
 
   const currentEditingBox = boxes.find((b) => b.id === editingBoxId);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 36, height: 36, border: '3px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-        <p style={{ color: '#6b7280', margin: 0 }}>Loading mission...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="app">
+      {/* Loading overlay — canvas stays mounted so the wheel listener is never lost */}
+      {loading && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+          <div style={{ width: 36, height: 36, border: '3px solid #e5e7eb', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading mission...</p>
+        </div>
+      )}
       <div className="toolbar">
         <button className="btn-back" onClick={onBack} title="Back to Admin Panel">
           ← Back
@@ -267,19 +397,31 @@ export default function MissionDesigner({ missionId, onBack }) {
         </button>
         {saveMsg && <span className="save-status">{saveMsg}</span>}
 
-        <p className="toolbar-text">Drag to move • Click dots to connect • Click Edit to configure</p>
+        <div className="toolbar-divider" />
+
+        <div className="zoom-controls">
+          <button className="zoom-btn" onClick={() => applyScale(Math.max(0.1, +(scaleRef.current / 1.25).toFixed(2)))}>−</button>
+          <button
+            className="zoom-pct"
+            onClick={() => { applyScale(1); applyOffset({ x: 0, y: 0 }); }}
+            title="Reset zoom and position"
+          >
+            {Math.round(scale * 100)}%
+          </button>
+          <button className="zoom-btn" onClick={() => applyScale(Math.min(5, +(scaleRef.current * 1.25).toFixed(2)))}>+</button>
+        </div>
+
+        <p className="toolbar-text">Scroll to zoom • Hold Space + drag to pan • Click dots to connect</p>
       </div>
 
       <div
         ref={canvasRef}
-        className="canvas"
+        className={`canvas${spaceDown ? ' pan-mode' : ''}`}
+        onMouseDown={handleCanvasPanStart}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
         onMouseLeave={handleCanvasMouseUp}
-        onClick={() => {
-          setSelectedBox(null);
-          setSelectedConnection(null);
-        }}
+        onClick={handleCanvasClick}
         onKeyDown={(e) => {
           if (e.key === 'Delete') {
             if (selectedBox) {
@@ -298,6 +440,11 @@ export default function MissionDesigner({ missionId, onBack }) {
         }}
         tabIndex="0"
       >
+        {/* Everything inside is in world (canvas) coordinate space */}
+        <div
+          className="canvas-world"
+          style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+        >
         <svg className="connections-svg">
           {connections.map((conn) => {
             const fromBox = boxes.find((b) => b.id === conn.fromBoxId);
@@ -514,6 +661,7 @@ export default function MissionDesigner({ missionId, onBack }) {
             />
           </div>
         ))}
+        </div> {/* /canvas-world */}
       </div>
 
       {editingBoxId && currentEditingBox && (
