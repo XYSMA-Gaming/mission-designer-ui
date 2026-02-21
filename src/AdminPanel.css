@@ -279,6 +279,29 @@
   background: #dbeafe;
 }
 
+.ap-download-btn {
+  flex: 1;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.ap-download-btn:hover:not(:disabled) {
+  background: #dcfce7;
+}
+
+.ap-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .ap-delete-btn {
   flex: 1;
   background: #fef2f2;

@@ -7,6 +7,7 @@ export default function AdminPanel({ user, onLogout, onEditMission, onNewMission
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const loadMissions = async () => {
     setLoading(true);
@@ -28,6 +29,17 @@ export default function AdminPanel({ user, onLogout, onEditMission, onNewMission
   const handleLogout = async () => {
     try { await api.logout(); } catch (_) {}
     onLogout();
+  };
+
+  const handleDownload = async (id, title) => {
+    setDownloadingId(id);
+    try {
+      await api.downloadMission(id, title);
+    } catch (err) {
+      alert('Error downloading mission: ' + err.message);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const handleDelete = async (id, title) => {
@@ -132,6 +144,14 @@ export default function AdminPanel({ user, onLogout, onEditMission, onNewMission
                     onClick={() => onEditMission(mission.id)}
                   >
                     ✎ Edit
+                  </button>
+                  <button
+                    className="ap-download-btn"
+                    onClick={() => handleDownload(mission.id, mission.title)}
+                    disabled={downloadingId === mission.id}
+                    title="Download as ZIP (includes images and audio)"
+                  >
+                    {downloadingId === mission.id ? 'Downloading...' : '⬇ ZIP'}
                   </button>
                   <button
                     className="ap-delete-btn"

@@ -61,6 +61,30 @@ export const api = {
   deleteMission: (id) =>
     request(`/missions/delete.php?id=${id}`, { method: 'DELETE' }),
 
+  downloadMission: async (id, title) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/missions/download.php?id=${id}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!res.ok) {
+      let msg = `Download failed (${res.status})`;
+      try { const d = await res.json(); msg = d.error || msg; } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (title || `mission_${id}`).replace(/[^a-z0-9_\- ]/gi, '_') + '.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
   // Uploads
   uploadImage: (file) => uploadFile('/upload/image.php', file),
   uploadAudio: (file) => uploadFile('/upload/audio.php', file),
