@@ -229,7 +229,6 @@ body {
   cursor: pointer;
   border-radius: 0 6px 6px 0;
   transition: background 0.2s;
-  line-height: 1;
 }
 
 .btn-dropdown-toggle:hover {
