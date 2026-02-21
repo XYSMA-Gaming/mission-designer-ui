@@ -1,4 +1,7 @@
-const API_BASE = '/api';
+// VITE_API_BASE lets each deployment target point to the correct backend.
+// Defaults to '/api' so local dev and the production deployment work with
+// no extra configuration.
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 const getToken = () => localStorage.getItem('token');
 

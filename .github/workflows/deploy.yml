@@ -47,6 +47,10 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        env:
+          # Point the built JS to the correct backend path per environment.
+          # Production: /api  |  Test (non-main branches): /api/test
+          VITE_API_BASE: ${{ github.ref_name == 'main' && '/api' || '/api/test' }}
         run: npm run build
 
       # -------------------------------------------------------------------------
