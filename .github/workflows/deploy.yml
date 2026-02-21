@@ -15,21 +15,24 @@ jobs:
     #   - Pushes to "main"       → uses the "production" GitHub environment
     #   - Pushes to other branches → uses the "test" GitHub environment
     #
-    # Each environment supplies its own DB secrets (DB_HOST, DB_PORT, DB_NAME,
-    # DB_USER, DB_PASS).  FTP credentials and base directories are shared as
-    # repository-level secrets/variables.
+    # Each environment must define its own variables and secrets:
     #
-    # Setup checklist (Settings > Environments):
-    #   1. Create a "production" environment with DB_HOST, DB_PORT, DB_NAME,
-    #      DB_USER, DB_PASS secrets pointing to the production database.
-    #   2. Create a "test" environment with DB_HOST, DB_PORT, DB_NAME,
-    #      DB_USER, DB_PASS secrets pointing to the test database.
-    #   3. Keep FTP_HOST, FTP_USERNAME, FTP_PASSWORD as repository secrets.
-    #   4. Keep FTP_BACKEND_DIR, FTP_FRONTEND_DIR as repository variables.
+    # Per-environment Variables (Settings > Environments > <env> > Variables):
+    #   FTP_BACKEND_DIR   FTP path to the PHP backend root
+    #                     e.g. production: /domains/game.cserver.ir/public_html/api/
+    #                          test:       /domains/test.game.cserver.ir/public_html/api/
+    #   FTP_FRONTEND_DIR  FTP path to the built React frontend root
+    #                     e.g. production: /domains/game.cserver.ir/public_html/
+    #                          test:       /domains/test.game.cserver.ir/public_html/
+    #   VITE_API_BASE     URL path the browser uses to reach the PHP backend
+    #                     (defaults to /api if not set — correct for both envs
+    #                      when each lives on its own domain/subdomain)
     #
-    # Non-main branches deploy to a "test/" subfolder on the FTP server:
-    #   backend  → <FTP_BACKEND_DIR>test/
-    #   frontend → <FTP_FRONTEND_DIR>test/
+    # Per-environment Secrets (Settings > Environments > <env> > Secrets):
+    #   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
+    #
+    # Repository Secrets (shared, Settings > Secrets > Actions):
+    #   FTP_HOST, FTP_USERNAME, FTP_PASSWORD
     # -------------------------------------------------------------------------
     environment: ${{ github.ref_name == 'main' && 'production' || 'test' }}
 
@@ -47,22 +50,11 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        env:
+          # Read from the GitHub environment variable; fall back to /api so
+          # local builds and environments that don't set it still work.
+          VITE_API_BASE: ${{ vars.VITE_API_BASE || '/api' }}
         run: npm run build
-
-      # -------------------------------------------------------------------------
-      # Determine FTP target directories.
-      # For non-main branches, append "test/" so the deployment is isolated.
-      # -------------------------------------------------------------------------
-      - name: Determine FTP target directories
-        id: ftp
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "backend_dir=${{ vars.FTP_BACKEND_DIR }}" >> "$GITHUB_OUTPUT"
-            echo "frontend_dir=${{ vars.FTP_FRONTEND_DIR }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend_dir=${{ vars.FTP_BACKEND_DIR }}test/" >> "$GITHUB_OUTPUT"
-            echo "frontend_dir=${{ vars.FTP_FRONTEND_DIR }}test/" >> "$GITHUB_OUTPUT"
-          fi
 
       # -------------------------------------------------------------------------
       # Generate backend/config/config.php from GitHub Secrets so that no real
@@ -70,16 +62,6 @@ jobs:
       #
       # DB secrets are read from the selected GitHub environment (production or
       # test), so each environment connects to its own database automatically.
-      #
-      # Required Secrets (per environment):
-      #   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-      #
-      # Required Secrets (repository level):
-      #   FTP_HOST, FTP_USERNAME, FTP_PASSWORD
-      #
-      # Required Variables (repository level):
-      #   FTP_BACKEND_DIR   e.g. /public_html/api/
-      #   FTP_FRONTEND_DIR  e.g. /public_html/
       # -------------------------------------------------------------------------
       - name: Generate config.php from secrets
         env:
@@ -109,7 +91,7 @@ jobs:
           username:   ${{ secrets.FTP_USERNAME }}
           password:   ${{ secrets.FTP_PASSWORD }}
           local-dir:  ./backend/
-          server-dir: ${{ steps.ftp.outputs.backend_dir }}
+          server-dir: ${{ vars.FTP_BACKEND_DIR }}
           exclude: |
             **/.git*
             **/.git*/**
@@ -124,4 +106,4 @@ jobs:
           username:   ${{ secrets.FTP_USERNAME }}
           password:   ${{ secrets.FTP_PASSWORD }}
           local-dir:  ./dist/
-          server-dir: ${{ steps.ftp.outputs.frontend_dir }}
+          server-dir: ${{ vars.FTP_FRONTEND_DIR }}

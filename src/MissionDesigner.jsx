@@ -15,6 +15,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const [editingBoxId, setEditingBoxId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -136,6 +137,22 @@ export default function MissionDesigner({ missionId, onBack }) {
       alert('Error saving mission: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    const id = currentMissionIdRef.current;
+    if (!id) {
+      alert('Please save the mission before downloading.');
+      return;
+    }
+    setDownloading(true);
+    try {
+      await api.downloadMission(id, missionTitle);
+    } catch (err) {
+      alert('Error downloading mission: ' + err.message);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -396,6 +413,15 @@ export default function MissionDesigner({ missionId, onBack }) {
           {saving ? 'Saving...' : '💾 Save'}
         </button>
         {saveMsg && <span className="save-status">{saveMsg}</span>}
+
+        <button
+          onClick={handleDownload}
+          className="btn-download-mission"
+          disabled={downloading || !currentMissionIdRef.current}
+          title={currentMissionIdRef.current ? 'Download mission as ZIP (includes all images and audio)' : 'Save the mission first to enable download'}
+        >
+          {downloading ? 'Downloading...' : '⬇ Download ZIP'}
+        </button>
 
         <div className="toolbar-divider" />
 
