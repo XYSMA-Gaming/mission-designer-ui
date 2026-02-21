@@ -16,6 +16,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -28,6 +29,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const panRef = useRef(null);
   const panMovedRef = useRef(false);
   const spaceDownRef = useRef(false);
+  const exportMenuRef = useRef(null);
   // Keep latest scale/offset in refs so native event handlers always read
   // fresh values without needing to be re-registered on every state change.
   const scaleRef = useRef(scale);
@@ -98,6 +100,17 @@ export default function MissionDesigner({ missionId, onBack }) {
     };
   }, []);
 
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
   // Load mission from server
   useEffect(() => {
     if (!missionId) return;
@@ -154,6 +167,46 @@ export default function MissionDesigner({ missionId, onBack }) {
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleExportJson = () => {
+    const payload = {
+      title: missionTitle,
+      description: missionDescription,
+      data: { boxes, connections },
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (missionTitle || 'mission').replace(/[^a-z0-9_\- ]/gi, '_') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const jsonInputRef = useRef(null);
+
+  const handleImportJson = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (parsed.title) setMissionTitle(parsed.title);
+        if (parsed.description !== undefined) setMissionDescription(parsed.description || '');
+        const data = parsed.data || parsed;
+        if (Array.isArray(data.boxes)) setBoxes(data.boxes);
+        if (Array.isArray(data.connections)) setConnections(data.connections);
+      } catch (err) {
+        alert('Invalid JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const addBox = () => {
@@ -414,14 +467,45 @@ export default function MissionDesigner({ missionId, onBack }) {
         </button>
         {saveMsg && <span className="save-status">{saveMsg}</span>}
 
-        <button
-          onClick={handleDownload}
-          className="btn-download-mission"
-          disabled={downloading || !currentMissionIdRef.current}
-          title={currentMissionIdRef.current ? 'Download mission as ZIP (includes all images and audio)' : 'Save the mission first to enable download'}
-        >
-          {downloading ? 'Downloading...' : '⬇ Download ZIP'}
-        </button>
+        <div className="export-dropdown" ref={exportMenuRef}>
+          <button
+            onClick={handleDownload}
+            className="btn-download-mission"
+            disabled={downloading || !currentMissionIdRef.current}
+            title={currentMissionIdRef.current ? 'Download mission as ZIP (includes all images and audio)' : 'Save the mission first to enable download'}
+          >
+            {downloading ? 'Downloading...' : '⬇ Download ZIP'}
+          </button>
+          <button
+            className="btn-dropdown-toggle"
+            onClick={() => setExportMenuOpen((v) => !v)}
+            title="More export options"
+          >
+            ▾
+          </button>
+          {exportMenuOpen && (
+            <div className="dropdown-menu">
+              <button
+                onClick={() => { handleExportJson(); setExportMenuOpen(false); }}
+                disabled={boxes.length === 0}
+              >
+                ↗ Export JSON
+              </button>
+              <button
+                onClick={() => { jsonInputRef.current.click(); setExportMenuOpen(false); }}
+              >
+                ↙ Import JSON
+              </button>
+            </div>
+          )}
+          <input
+            ref={jsonInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImportJson}
+            style={{ display: 'none' }}
+          />
+        </div>
 
         <div className="toolbar-divider" />
 

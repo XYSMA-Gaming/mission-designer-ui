@@ -205,6 +205,77 @@ body {
   cursor: not-allowed;
 }
 
+/* Export/Import split-button dropdown */
+.export-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.export-dropdown .btn-download-mission {
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+}
+
+.btn-dropdown-toggle {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-left: none;
+  padding: 8px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  transition: background 0.2s;
+}
+
+.btn-dropdown-toggle:hover {
+  background: #dcfce7;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dropdown-menu button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.dropdown-menu button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dropdown-menu button + button {
+  border-top: 1px solid #f3f4f6;
+}
+
 .save-status {
   font-size: 13px;
   color: #10b981;
