@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import LoginPage from './LoginPage';
 import AdminPanel from './AdminPanel';
 import MissionDesigner from './MissionDesigner';
+import ImageEditor from './ImageEditor';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [page, setPage] = useState('login'); // 'login' | 'admin' | 'designer'
+  const [page, setPage] = useState('login'); // 'login' | 'admin' | 'designer' | 'image-editor'
   const [editingMissionId, setEditingMissionId] = useState(null);
 
   // Restore session from localStorage on mount
@@ -61,12 +62,17 @@ export default function App() {
     return <MissionDesigner missionId={editingMissionId} onBack={handleBackToAdmin} />;
   }
 
+  if (page === 'image-editor') {
+    return <ImageEditor onBack={handleBackToAdmin} />;
+  }
+
   return (
     <AdminPanel
       user={user}
       onLogout={handleLogout}
       onEditMission={handleEditMission}
       onNewMission={handleNewMission}
+      onOpenImageEditor={() => setPage('image-editor')}
     />
   );
 }
