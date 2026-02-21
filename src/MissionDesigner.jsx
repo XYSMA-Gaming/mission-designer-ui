@@ -156,6 +156,46 @@ export default function MissionDesigner({ missionId, onBack }) {
     }
   };
 
+  const handleExportJson = () => {
+    const payload = {
+      title: missionTitle,
+      description: missionDescription,
+      data: { boxes, connections },
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (missionTitle || 'mission').replace(/[^a-z0-9_\- ]/gi, '_') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const jsonInputRef = useRef(null);
+
+  const handleImportJson = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (parsed.title) setMissionTitle(parsed.title);
+        if (parsed.description !== undefined) setMissionDescription(parsed.description || '');
+        const data = parsed.data || parsed;
+        if (Array.isArray(data.boxes)) setBoxes(data.boxes);
+        if (Array.isArray(data.connections)) setConnections(data.connections);
+      } catch (err) {
+        alert('Invalid JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const addBox = () => {
     const newBox = {
       id: Date.now(),
@@ -414,14 +454,38 @@ export default function MissionDesigner({ missionId, onBack }) {
         </button>
         {saveMsg && <span className="save-status">{saveMsg}</span>}
 
-        <button
-          onClick={handleDownload}
-          className="btn-download-mission"
-          disabled={downloading || !currentMissionIdRef.current}
-          title={currentMissionIdRef.current ? 'Download mission as ZIP (includes all images and audio)' : 'Save the mission first to enable download'}
-        >
-          {downloading ? 'Downloading...' : '⬇ Download ZIP'}
-        </button>
+        <div className="btn-group-export">
+          <button
+            onClick={handleDownload}
+            className="btn-download-mission"
+            disabled={downloading || !currentMissionIdRef.current}
+            title={currentMissionIdRef.current ? 'Download mission as ZIP (includes all images and audio)' : 'Save the mission first to enable download'}
+          >
+            {downloading ? 'Downloading...' : '⬇ Download ZIP'}
+          </button>
+          <button
+            onClick={handleExportJson}
+            className="btn-export-json"
+            disabled={boxes.length === 0}
+            title="Export mission structure as JSON"
+          >
+            ↗ Export JSON
+          </button>
+          <button
+            onClick={() => jsonInputRef.current.click()}
+            className="btn-import-json"
+            title="Import mission structure from JSON"
+          >
+            ↙ Import JSON
+          </button>
+          <input
+            ref={jsonInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImportJson}
+            style={{ display: 'none' }}
+          />
+        </div>
 
         <div className="toolbar-divider" />
 
