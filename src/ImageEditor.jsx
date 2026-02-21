@@ -615,7 +615,7 @@ function drawBubbleToCanvas(ctx, bubble) {
   if (fontStyle === 'italic') fontParts.push('italic');
   if (fontWeight === 'bold') fontParts.push('bold');
   fontParts.push(`${fontSize}px`);
-  fontParts.push('sans-serif');
+  fontParts.push("'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif");
   ctx.font = fontParts.join(' ');
 
   const textX = x + pad + width / 2;
