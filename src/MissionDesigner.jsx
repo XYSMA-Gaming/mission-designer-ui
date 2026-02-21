@@ -16,6 +16,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -28,6 +29,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const panRef = useRef(null);
   const panMovedRef = useRef(false);
   const spaceDownRef = useRef(false);
+  const exportMenuRef = useRef(null);
   // Keep latest scale/offset in refs so native event handlers always read
   // fresh values without needing to be re-registered on every state change.
   const scaleRef = useRef(scale);
@@ -96,6 +98,17 @@ export default function MissionDesigner({ missionId, onBack }) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
+  }, []);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
   // Load mission from server
@@ -454,7 +467,7 @@ export default function MissionDesigner({ missionId, onBack }) {
         </button>
         {saveMsg && <span className="save-status">{saveMsg}</span>}
 
-        <div className="btn-group-export">
+        <div className="export-dropdown" ref={exportMenuRef}>
           <button
             onClick={handleDownload}
             className="btn-download-mission"
@@ -464,20 +477,27 @@ export default function MissionDesigner({ missionId, onBack }) {
             {downloading ? 'Downloading...' : '⬇ Download ZIP'}
           </button>
           <button
-            onClick={handleExportJson}
-            className="btn-export-json"
-            disabled={boxes.length === 0}
-            title="Export mission structure as JSON"
+            className="btn-dropdown-toggle"
+            onClick={() => setExportMenuOpen((v) => !v)}
+            title="More export options"
           >
-            ↗ Export JSON
+            ▾
           </button>
-          <button
-            onClick={() => jsonInputRef.current.click()}
-            className="btn-import-json"
-            title="Import mission structure from JSON"
-          >
-            ↙ Import JSON
-          </button>
+          {exportMenuOpen && (
+            <div className="dropdown-menu">
+              <button
+                onClick={() => { handleExportJson(); setExportMenuOpen(false); }}
+                disabled={boxes.length === 0}
+              >
+                ↗ Export JSON
+              </button>
+              <button
+                onClick={() => { jsonInputRef.current.click(); setExportMenuOpen(false); }}
+              >
+                ↙ Import JSON
+              </button>
+            </div>
+          )}
           <input
             ref={jsonInputRef}
             type="file"
