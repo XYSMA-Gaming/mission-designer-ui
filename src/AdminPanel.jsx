@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from './api';
 import './AdminPanel.css';
 
-export default function AdminPanel({ user, onLogout, onEditMission, onNewMission }) {
+export default function AdminPanel({ user, onLogout, onEditMission, onNewMission, onOpenImageEditor }) {
   const [missions, setMissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,9 +92,14 @@ export default function AdminPanel({ user, onLogout, onEditMission, onNewMission
               {missions.length} mission{missions.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <button className="ap-new-btn" onClick={onNewMission}>
-            + New Mission
-          </button>
+          <div className="ap-section-actions">
+            <button className="ap-new-btn" onClick={onNewMission}>
+              + New Mission
+            </button>
+            <button className="ap-image-editor-btn" onClick={onOpenImageEditor}>
+              Image Editor
+            </button>
+          </div>
         </div>
 
         {loading && (
