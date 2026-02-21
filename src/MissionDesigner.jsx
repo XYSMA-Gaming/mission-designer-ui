@@ -7,6 +7,10 @@ export default function MissionDesigner({ missionId, onBack }) {
   const [missionDescription, setMissionDescription] = useState('');
   const [boxes, setBoxes] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [backgroundAudio, setBackgroundAudio] = useState(null);
+  const [backgroundAudioName, setBackgroundAudioName] = useState(null);
+  const [startingSceneId, setStartingSceneId] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedBox, setSelectedBox] = useState(null);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [connecting, setConnecting] = useState(null);
@@ -121,6 +125,9 @@ export default function MissionDesigner({ missionId, onBack }) {
         setMissionDescription(mission.description || '');
         setBoxes((mission.data && mission.data.boxes) || []);
         setConnections((mission.data && mission.data.connections) || []);
+        setBackgroundAudio((mission.data && mission.data.backgroundAudio) || null);
+        setBackgroundAudioName((mission.data && mission.data.backgroundAudioName) || null);
+        setStartingSceneId((mission.data && mission.data.startingSceneId) || null);
         currentMissionIdRef.current = mission.id;
       })
       .catch((err) => alert('Error loading mission: ' + err.message))
@@ -139,7 +146,7 @@ export default function MissionDesigner({ missionId, onBack }) {
         id: currentMissionIdRef.current,
         title: missionTitle.trim(),
         description: missionDescription.trim(),
-        data: { boxes, connections },
+        data: { boxes, connections, backgroundAudio, backgroundAudioName, startingSceneId },
       });
       if (!currentMissionIdRef.current) {
         currentMissionIdRef.current = result.id;
@@ -173,7 +180,7 @@ export default function MissionDesigner({ missionId, onBack }) {
     const payload = {
       title: missionTitle,
       description: missionDescription,
-      data: { boxes, connections },
+      data: { boxes, connections, backgroundAudio, backgroundAudioName, startingSceneId },
     };
     const json = JSON.stringify(payload, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -201,6 +208,9 @@ export default function MissionDesigner({ missionId, onBack }) {
         const data = parsed.data || parsed;
         if (Array.isArray(data.boxes)) setBoxes(data.boxes);
         if (Array.isArray(data.connections)) setConnections(data.connections);
+        if (data.backgroundAudio !== undefined) setBackgroundAudio(data.backgroundAudio || null);
+        if (data.backgroundAudioName !== undefined) setBackgroundAudioName(data.backgroundAudioName || null);
+        if (data.startingSceneId !== undefined) setStartingSceneId(data.startingSceneId || null);
       } catch (err) {
         alert('Invalid JSON file: ' + err.message);
       }
@@ -434,6 +444,10 @@ export default function MissionDesigner({ missionId, onBack }) {
           />
         </div>
 
+        <button className="btn-settings" onClick={() => setSettingsOpen(true)} title="Mission Settings">
+          Settings
+        </button>
+
         <div className="toolbar-divider" />
 
         <button onClick={addBox} className="btn-primary">
@@ -659,6 +673,9 @@ export default function MissionDesigner({ missionId, onBack }) {
               <div className="screen-label-row">
                 <div className="screen-label">{box.label}</div>
                 <div className="box-badges">
+                  {startingSceneId === box.id && (
+                    <span className="start-badge" title="Starting scene">START</span>
+                  )}
                   {box.checkpoint && (
                     <span className="checkpoint-badge" title="Checkpoint">✓</span>
                   )}
@@ -782,6 +799,22 @@ export default function MissionDesigner({ missionId, onBack }) {
             setEditingBoxId(null);
           }}
           onClose={() => setEditingBoxId(null)}
+        />
+      )}
+
+      {settingsOpen && (
+        <MissionSettingsDialog
+          backgroundAudio={backgroundAudio}
+          backgroundAudioName={backgroundAudioName}
+          startingSceneId={startingSceneId}
+          boxes={boxes}
+          onSave={({ backgroundAudio: ba, backgroundAudioName: ban, startingSceneId: ss }) => {
+            setBackgroundAudio(ba);
+            setBackgroundAudioName(ban);
+            setStartingSceneId(ss);
+            setSettingsOpen(false);
+          }}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>
@@ -1062,6 +1095,117 @@ function EditDialog({ box, onSave, onClose }) {
           </button>
           <button className="btn-save" onClick={handleSave}>
             Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MissionSettingsDialog – background audio & starting scene
+// ---------------------------------------------------------------------------
+function MissionSettingsDialog({ backgroundAudio: initAudio, backgroundAudioName: initAudioName, startingSceneId: initStartId, boxes, onSave, onClose }) {
+  const [bgAudio, setBgAudio] = useState(initAudio);
+  const [bgAudioName, setBgAudioName] = useState(initAudioName);
+  const [startScene, setStartScene] = useState(initStartId);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const audioInputRef = useRef(null);
+
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAudioUploading(true);
+    try {
+      const data = await api.uploadAudio(file);
+      setBgAudio(data.url);
+      setBgAudioName(data.name || file.name);
+    } catch (err) {
+      alert('Audio upload failed: ' + err.message);
+    } finally {
+      setAudioUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSave = () => {
+    onSave({ backgroundAudio: bgAudio, backgroundAudioName: bgAudioName, startingSceneId: startScene });
+  };
+
+  return (
+    <div className="dialog-overlay" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-header">
+          <h2>Mission Settings</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="dialog-body">
+          {/* Background Audio */}
+          <div className="form-group">
+            <label>Background Audio</label>
+            <p className="form-hint">Audio that plays in the background throughout the mission.</p>
+            <div className="audio-upload">
+              {bgAudio && (
+                <div className="audio-preview">
+                  <span className="audio-icon">♪</span>
+                  <span className="audio-filename">{bgAudioName || 'Audio file'}</span>
+                  <button
+                    type="button"
+                    className="remove-audio"
+                    onClick={() => { setBgAudio(null); setBgAudioName(null); }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn-upload"
+                onClick={() => audioInputRef.current.click()}
+                disabled={audioUploading}
+              >
+                {audioUploading ? 'Uploading...' : bgAudio ? 'Change Audio' : 'Upload Audio'}
+              </button>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+
+          {/* Starting Scene */}
+          <div className="form-group">
+            <label>Starting Scene</label>
+            <p className="form-hint">The first screen shown when the mission begins.</p>
+            {boxes.length === 0 ? (
+              <p className="form-hint" style={{ fontStyle: 'italic' }}>No screens added yet. Add screens to the canvas first.</p>
+            ) : (
+              <select
+                className="form-select"
+                value={startScene || ''}
+                onChange={(e) => setStartScene(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">-- None --</option>
+                {boxes.map((box) => (
+                  <option key={box.id} value={box.id}>{box.label}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        <div className="dialog-footer">
+          <button className="btn-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-save" onClick={handleSave}>
+            Save Settings
           </button>
         </div>
       </div>

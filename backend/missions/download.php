@@ -95,6 +95,11 @@ foreach ($missionData['boxes'] as &$box) {
 }
 unset($box);
 
+// Rewrite mission-level background audio URL
+if (!empty($missionData['backgroundAudio'])) {
+    $missionData['backgroundAudio'] = rewriteUrl($missionData['backgroundAudio'], $mediaTypes, $filesToAdd);
+}
+
 // -----------------------------------------------------------------------
 // Build the export JSON
 // -----------------------------------------------------------------------
