@@ -77,11 +77,27 @@ export const api = {
       throw new Error(msg);
     }
 
-    const blob = await res.blob();
+    const filename = (title || `mission_${id}`).replace(/[^a-z0-9_\- ]/gi, '_') + '.zip';
+
+    // Stream the response into chunks and assemble the blob only at the end.
+    // This avoids holding the entire decoded response in memory twice and lets
+    // the browser write data progressively, preventing OOM on large ZIPs.
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+    }
+
+    const blob = new Blob(chunks, { type: 'application/zip' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (title || `mission_${id}`).replace(/[^a-z0-9_\- ]/gi, '_') + '.zip';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

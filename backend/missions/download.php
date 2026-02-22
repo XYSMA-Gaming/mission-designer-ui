@@ -6,11 +6,15 @@ require_once __DIR__ . '/../middleware/auth.php';
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Expose-Headers: Content-Disposition, Content-Length, Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+// Large missions with many media files can take a while to zip.
+set_time_limit(300);
 
 $pdo = getDB();
 requireAuth($pdo);
@@ -143,6 +147,12 @@ $zip->close();
 $zipFilename = $safeTitle . '.zip';
 $fileSize    = filesize($tmpFile);
 
+// Clear any output buffering so the binary stream is clean and
+// Content-Length matches the actual number of bytes sent.
+while (ob_get_level()) {
+    ob_end_clean();
+}
+
 header('Content-Type: application/zip');
 header('Content-Disposition: attachment; filename="' . $zipFilename . '"');
 header('Content-Length: ' . $fileSize);
@@ -150,6 +160,17 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-readfile($tmpFile);
+// Stream in 512 KB chunks to avoid hitting PHP memory_limit on large ZIPs.
+$fp = fopen($tmpFile, 'rb');
+if ($fp) {
+    while (!feof($fp)) {
+        echo fread($fp, 524288);
+        flush();
+    }
+    fclose($fp);
+} else {
+    readfile($tmpFile);
+}
+
 unlink($tmpFile);
 exit();
