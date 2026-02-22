@@ -222,6 +222,7 @@ export default function MissionDesigner({ missionId, onBack }) {
   const addBox = () => {
     const newBox = {
       id: Date.now(),
+      type: 'scene',
       x: 100 + Math.random() * 200,
       y: 100 + Math.random() * 200,
       width: 400,
@@ -238,6 +239,22 @@ export default function MissionDesigner({ missionId, onBack }) {
         { id: Date.now() + 1, text: 'Option 1' },
         { id: Date.now() + 2, text: 'Option 2' },
       ],
+    };
+    setBoxes([...boxes, newBox]);
+  };
+
+  const addUpdateContextBox = () => {
+    const newBox = {
+      id: Date.now(),
+      type: 'updateContext',
+      x: 100 + Math.random() * 200,
+      y: 100 + Math.random() * 200,
+      width: 260,
+      height: 160,
+      label: `Update Context ${boxes.filter((b) => (b.type || 'scene') === 'updateContext').length + 1}`,
+      action: 'updateMusic',
+      backgroundMusic: null,
+      backgroundMusicName: null,
     };
     setBoxes([...boxes, newBox]);
   };
@@ -453,6 +470,9 @@ export default function MissionDesigner({ missionId, onBack }) {
         <button onClick={addBox} className="btn-primary">
           + Add Screen
         </button>
+        <button onClick={addUpdateContextBox} className="btn-update-context">
+          + Update Context
+        </button>
         <button
           onClick={() => {
             if (selectedBox) {
@@ -576,7 +596,7 @@ export default function MissionDesigner({ missionId, onBack }) {
             if (!fromBox || !toBox) return null;
 
             let fromY = fromBox.y + fromBox.height / 2;
-            if (conn.fromOptionId !== null) {
+            if (conn.fromOptionId !== null && fromBox.options) {
               const optionIndex = fromBox.options.findIndex((opt) => opt.id === conn.fromOptionId);
               if (optionIndex !== -1) {
                 const actualPos = getActualOptionPosition(conn.fromBoxId, optionIndex);
@@ -650,156 +670,264 @@ export default function MissionDesigner({ missionId, onBack }) {
             })()}
         </svg>
 
-        {boxes.map((box) => (
-          <div
-            key={box.id}
-            className={`box ${selectedBox === box.id ? 'selected' : ''}`}
-            style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
-            onMouseDown={(e) => handleMouseDown(e, box.id)}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (connecting && connecting !== box.id) {
-                completeConnection(box.id);
-              }
-            }}
-          >
-            {box.image && (
-              <div className="box-image">
-                <img src={box.image} alt="Screen" />
-              </div>
-            )}
+        {boxes.map((box) => {
+          const boxType = box.type || 'scene';
 
-            <div className="box-content">
-              <div className="screen-label-row">
-                <div className="screen-label">{box.label}</div>
-                <div className="box-badges">
-                  {startingSceneId === box.id && (
-                    <span className="start-badge" title="Starting scene">START</span>
-                  )}
-                  {box.checkpoint && (
-                    <span className="checkpoint-badge" title="Checkpoint">✓</span>
-                  )}
-                  {(box.audio || box.extendedAudio) && (
-                    <div className="audio-indicators">
-                      {box.audio && (
-                        <span className="audio-badge" title="Normal audio">♪</span>
-                      )}
-                      {box.extendedAudio && (
-                        <span className="audio-badge audio-badge-extended" title="Extended audio">♫</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {box.question && <div className="screen-question">{box.question}</div>}
+          if (boxType === 'updateContext') {
+            return (
+              <div
+                key={box.id}
+                className={`box box-update-context ${selectedBox === box.id ? 'selected' : ''}`}
+                style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+                onMouseDown={(e) => handleMouseDown(e, box.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (connecting && connecting !== box.id) {
+                    completeConnection(box.id);
+                  }
+                }}
+              >
+                <div className="box-content">
+                  <div className="update-context-header">
+                    <span className="update-context-icon">&#9881;</span>
+                    <span className="screen-label">{box.label}</span>
+                  </div>
+                  <div className="update-context-action">
+                    {box.action === 'pauseMusic' ? (
+                      <span className="action-tag action-tag-pause">Pause Music</span>
+                    ) : (
+                      <span className="action-tag action-tag-update">
+                        Update Music
+                        {box.backgroundMusicName && (
+                          <span className="action-music-name" title={box.backgroundMusicName}>
+                            : {box.backgroundMusicName}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
 
-              {box.options.length > 0 && (
-                <div className="screen-options-list">
-                  {box.options.map((option, index) => (
-                    <div
-                      key={option.id}
-                      data-option-id={`${box.id}-${index}`}
-                      className={`option-item ${
-                        connecting && connectingFromOption !== option.id ? 'can-connect' : ''
-                      } ${connectingFromOption === option.id ? 'connecting' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (connecting && connectingFromOption !== option.id) {
-                          completeConnection(box.id);
-                        }
-                      }}
-                    >
-                      <div className="option-text">{option.text}</div>
-                      <div
-                        className={`option-connection-point ${
-                          connecting === box.id && connectingFromOption === option.id ? 'active' : ''
-                        }`}
-                        data-connection-point
-                        onMouseDown={(e) => {
+                  {selectedBox === box.id && (
+                    <div className="box-controls-inline">
+                      <button
+                        className="edit-btn"
+                        onClick={(e) => {
                           e.stopPropagation();
-                          if (connecting === box.id && connectingFromOption === option.id) {
-                            setConnecting(null);
-                            setConnectingFromOption(null);
-                          } else {
-                            setConnecting(box.id);
-                            setConnectingFromOption(option.id);
-                          }
+                          setEditingBoxId(box.id);
                         }}
-                        title="Connect from this option"
-                      />
+                        title="Edit update context"
+                      >
+                        ✎ Edit
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteBox(box.id);
+                        }}
+                        title="Delete update context"
+                      >
+                        ✕ Delete
+                      </button>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
 
-              {selectedBox === box.id && (
-                <div className="box-controls-inline">
-                  <button
-                    className="edit-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingBoxId(box.id);
-                    }}
-                    title="Edit screen"
-                  >
-                    ✎ Edit
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteBox(box.id);
-                    }}
-                    title="Delete screen"
-                  >
-                    ✕ Delete
-                  </button>
-                </div>
-              )}
-            </div>
+                <div
+                  className={`connection-point ${connecting === box.id ? 'active' : ''}`}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    if (connecting === box.id) {
+                      setConnecting(null);
+                    } else {
+                      setConnecting(box.id);
+                    }
+                  }}
+                  title="Click to connect"
+                />
 
+                <div
+                  className="resize-handle"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    setSelectedBox(box.id);
+                    resizeRef.current = {
+                      boxId: box.id,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      width: box.width,
+                      height: box.height,
+                    };
+                  }}
+                  title="Drag to resize"
+                />
+              </div>
+            );
+          }
+
+          // Default: scene box
+          return (
             <div
-              className={`connection-point ${connecting === box.id ? 'active' : ''}`}
-              onMouseDown={(e) => {
+              key={box.id}
+              className={`box ${selectedBox === box.id ? 'selected' : ''}`}
+              style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+              onMouseDown={(e) => handleMouseDown(e, box.id)}
+              onClick={(e) => {
                 e.stopPropagation();
-                if (connecting === box.id) {
-                  setConnecting(null);
-                } else {
-                  setConnecting(box.id);
+                if (connecting && connecting !== box.id) {
+                  completeConnection(box.id);
                 }
               }}
-              title="Click to connect"
-            />
+            >
+              {box.image && (
+                <div className="box-image">
+                  <img src={box.image} alt="Screen" />
+                </div>
+              )}
 
-            <div
-              className="resize-handle"
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setSelectedBox(box.id);
-                resizeRef.current = {
-                  boxId: box.id,
-                  startX: e.clientX,
-                  startY: e.clientY,
-                  width: box.width,
-                  height: box.height,
-                };
-              }}
-              title="Drag to resize"
-            />
-          </div>
-        ))}
+              <div className="box-content">
+                <div className="screen-label-row">
+                  <div className="screen-label">{box.label}</div>
+                  <div className="box-badges">
+                    {startingSceneId === box.id && (
+                      <span className="start-badge" title="Starting scene">START</span>
+                    )}
+                    {box.checkpoint && (
+                      <span className="checkpoint-badge" title="Checkpoint">✓</span>
+                    )}
+                    {(box.audio || box.extendedAudio) && (
+                      <div className="audio-indicators">
+                        {box.audio && (
+                          <span className="audio-badge" title="Normal audio">♪</span>
+                        )}
+                        {box.extendedAudio && (
+                          <span className="audio-badge audio-badge-extended" title="Extended audio">♫</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {box.question && <div className="screen-question">{box.question}</div>}
+
+                {box.options && box.options.length > 0 && (
+                  <div className="screen-options-list">
+                    {box.options.map((option, index) => (
+                      <div
+                        key={option.id}
+                        data-option-id={`${box.id}-${index}`}
+                        className={`option-item ${
+                          connecting && connectingFromOption !== option.id ? 'can-connect' : ''
+                        } ${connectingFromOption === option.id ? 'connecting' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (connecting && connectingFromOption !== option.id) {
+                            completeConnection(box.id);
+                          }
+                        }}
+                      >
+                        <div className="option-text">{option.text}</div>
+                        <div
+                          className={`option-connection-point ${
+                            connecting === box.id && connectingFromOption === option.id ? 'active' : ''
+                          }`}
+                          data-connection-point
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            if (connecting === box.id && connectingFromOption === option.id) {
+                              setConnecting(null);
+                              setConnectingFromOption(null);
+                            } else {
+                              setConnecting(box.id);
+                              setConnectingFromOption(option.id);
+                            }
+                          }}
+                          title="Connect from this option"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedBox === box.id && (
+                  <div className="box-controls-inline">
+                    <button
+                      className="edit-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingBoxId(box.id);
+                      }}
+                      title="Edit screen"
+                    >
+                      ✎ Edit
+                    </button>
+                    <button
+                      className="delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteBox(box.id);
+                      }}
+                      title="Delete screen"
+                    >
+                      ✕ Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div
+                className={`connection-point ${connecting === box.id ? 'active' : ''}`}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (connecting === box.id) {
+                    setConnecting(null);
+                  } else {
+                    setConnecting(box.id);
+                  }
+                }}
+                title="Click to connect"
+              />
+
+              <div
+                className="resize-handle"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setSelectedBox(box.id);
+                  resizeRef.current = {
+                    boxId: box.id,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    width: box.width,
+                    height: box.height,
+                  };
+                }}
+                title="Drag to resize"
+              />
+            </div>
+          );
+        })}
         </div> {/* /canvas-world */}
       </div>
 
       {editingBoxId && currentEditingBox && (
-        <EditDialog
-          box={currentEditingBox}
-          onSave={(updates) => {
-            updateBox(editingBoxId, updates);
-            setEditingBoxId(null);
-          }}
-          onClose={() => setEditingBoxId(null)}
-        />
+        (currentEditingBox.type || 'scene') === 'updateContext' ? (
+          <UpdateContextEditDialog
+            box={currentEditingBox}
+            onSave={(updates) => {
+              updateBox(editingBoxId, updates);
+              setEditingBoxId(null);
+            }}
+            onClose={() => setEditingBoxId(null)}
+          />
+        ) : (
+          <EditDialog
+            box={currentEditingBox}
+            onSave={(updates) => {
+              updateBox(editingBoxId, updates);
+              setEditingBoxId(null);
+            }}
+            onClose={() => setEditingBoxId(null)}
+          />
+        )
       )}
 
       {settingsOpen && (
@@ -1103,6 +1231,142 @@ function EditDialog({ box, onSave, onClose }) {
 }
 
 // ---------------------------------------------------------------------------
+// UpdateContextEditDialog – edit update-context box (background music actions)
+// ---------------------------------------------------------------------------
+function UpdateContextEditDialog({ box, onSave, onClose }) {
+  const [label, setLabel] = useState(box.label);
+  const [action, setAction] = useState(box.action || 'updateMusic');
+  const [bgMusic, setBgMusic] = useState(box.backgroundMusic || null);
+  const [bgMusicName, setBgMusicName] = useState(box.backgroundMusicName || null);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const audioInputRef = useRef(null);
+
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAudioUploading(true);
+    try {
+      const data = await api.uploadAudio(file);
+      setBgMusic(data.url);
+      setBgMusicName(data.name || file.name);
+    } catch (err) {
+      alert('Audio upload failed: ' + err.message);
+    } finally {
+      setAudioUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSave = () => {
+    const updates = { label, action };
+    if (action === 'updateMusic') {
+      updates.backgroundMusic = bgMusic;
+      updates.backgroundMusicName = bgMusicName;
+    } else {
+      updates.backgroundMusic = null;
+      updates.backgroundMusicName = null;
+    }
+    onSave(updates);
+  };
+
+  return (
+    <div className="dialog-overlay" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-header">
+          <h2>Edit Update Context</h2>
+          <button className="close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="dialog-body">
+          {/* Label */}
+          <div className="form-group">
+            <label>Label</label>
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g., Switch to battle music"
+            />
+          </div>
+
+          {/* Action */}
+          <div className="form-group">
+            <label>Action</label>
+            <select
+              className="form-select"
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+            >
+              <option value="updateMusic">Update Background Music</option>
+              <option value="pauseMusic">Pause Background Music</option>
+            </select>
+          </div>
+
+          {/* Music file – only for updateMusic */}
+          {action === 'updateMusic' && (
+            <div className="form-group">
+              <label>New Background Music</label>
+              <p className="form-hint">
+                The audio file that will replace the current background music when this node is reached.
+              </p>
+              <div className="audio-upload">
+                {bgMusic && (
+                  <div className="audio-preview">
+                    <span className="audio-icon">♪</span>
+                    <span className="audio-filename">{bgMusicName || 'Audio file'}</span>
+                    <button
+                      type="button"
+                      className="remove-audio"
+                      onClick={() => { setBgMusic(null); setBgMusicName(null); }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="btn-upload"
+                  onClick={() => audioInputRef.current.click()}
+                  disabled={audioUploading}
+                >
+                  {audioUploading ? 'Uploading...' : bgMusic ? 'Change Audio' : 'Upload Audio'}
+                </button>
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleAudioUpload}
+                  style={{ display: 'none' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {action === 'pauseMusic' && (
+            <div className="form-group">
+              <p className="form-hint">
+                Background music will be paused when this node is reached during playback.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="dialog-footer">
+          <button className="btn-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-save" onClick={handleSave}>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MissionSettingsDialog – background audio & starting scene
 // ---------------------------------------------------------------------------
 function MissionSettingsDialog({ backgroundAudio: initAudio, backgroundAudioName: initAudioName, startingSceneId: initStartId, boxes, onSave, onClose }) {
@@ -1183,7 +1447,7 @@ function MissionSettingsDialog({ backgroundAudio: initAudio, backgroundAudioName
           <div className="form-group">
             <label>Starting Scene</label>
             <p className="form-hint">The first screen shown when the mission begins.</p>
-            {boxes.length === 0 ? (
+            {boxes.filter((b) => (b.type || 'scene') === 'scene').length === 0 ? (
               <p className="form-hint" style={{ fontStyle: 'italic' }}>No screens added yet. Add screens to the canvas first.</p>
             ) : (
               <select
@@ -1192,7 +1456,7 @@ function MissionSettingsDialog({ backgroundAudio: initAudio, backgroundAudioName
                 onChange={(e) => setStartScene(e.target.value ? Number(e.target.value) : null)}
               >
                 <option value="">-- None --</option>
-                {boxes.map((box) => (
+                {boxes.filter((b) => (b.type || 'scene') === 'scene').map((box) => (
                   <option key={box.id} value={box.id}>{box.label}</option>
                 ))}
               </select>

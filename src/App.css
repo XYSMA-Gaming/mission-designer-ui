@@ -1141,3 +1141,85 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+
+/* -----------------------------------------------------------------------
+   Update Context Box
+   ----------------------------------------------------------------------- */
+.btn-update-context {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-update-context:hover {
+  background: #7c3aed;
+}
+
+.box.box-update-context {
+  border: 2px solid #c4b5fd;
+  background: #f5f3ff;
+  border-radius: 10px;
+}
+
+.box.box-update-context:hover {
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.15);
+}
+
+.box.box-update-context.selected {
+  border-color: #8b5cf6;
+  background: #ede9fe;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.update-context-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.update-context-icon {
+  font-size: 16px;
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.update-context-action {
+  margin-top: 4px;
+}
+
+.action-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-tag-update {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.action-tag-pause {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.action-music-name {
+  font-weight: 400;
+  margin-left: 2px;
+  opacity: 0.8;
+}
